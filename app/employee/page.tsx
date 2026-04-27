@@ -45,6 +45,7 @@ type MaintenanceRequest = {
   status: string;
   created_at: string;
   assigned_to?: string | null;
+  notes?: string | null;
   attachment_url?: string | null;
 };
 
@@ -57,9 +58,7 @@ export default function EmployeePage() {
 
   const [ownerMembers, setOwnerMembers] = useState<Member[]>([]);
   const [ownerJoinRequests, setOwnerJoinRequests] = useState<JoinRequest[]>([]);
-  const [ownerMaintenanceRequests, setOwnerMaintenanceRequests] = useState<
-    MaintenanceRequest[]
-  >([]);
+  const [ownerMaintenanceRequests, setOwnerMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -186,26 +185,13 @@ export default function EmployeePage() {
       .eq("organization_id", orgId)
       .order("created_at", { ascending: false });
 
-    if (membersResult.error) {
-      setMessage(membersResult.error.message);
-    }
-
-    if (joinRequestsResult.error) {
-      setMessage(joinRequestsResult.error.message);
-    }
-
-    if (maintenanceRequestsResult.error) {
-      setMessage(maintenanceRequestsResult.error.message);
-    }
+    if (membersResult.error) setMessage(membersResult.error.message);
+    if (joinRequestsResult.error) setMessage(joinRequestsResult.error.message);
+    if (maintenanceRequestsResult.error) setMessage(maintenanceRequestsResult.error.message);
 
     setOwnerMembers((membersResult.data || []) as unknown as Member[]);
-    setOwnerJoinRequests(
-      (joinRequestsResult.data || []) as unknown as JoinRequest[]
-    );
-    setOwnerMaintenanceRequests(
-      (maintenanceRequestsResult.data || []) as MaintenanceRequest[]
-    );
-
+    setOwnerJoinRequests((joinRequestsResult.data || []) as unknown as JoinRequest[]);
+    setOwnerMaintenanceRequests((maintenanceRequestsResult.data || []) as MaintenanceRequest[]);
     setOwnerLoading(false);
   }
 
@@ -467,6 +453,20 @@ export default function EmployeePage() {
                                   ? request.assigned_to.slice(0, 8)
                                   : "Unassigned"}
                               </span>
+
+                              <div style={{ marginTop: 12 }}>
+                                <strong>Notes</strong>
+                                <textarea
+                                  defaultValue={request.notes || ""}
+                                  placeholder="Add internal notes..."
+                                  onBlur={(e) =>
+                                    updateMaintenanceRequest(request.id, {
+                                      notes: e.target.value,
+                                    })
+                                  }
+                                  style={notesBoxStyle}
+                                />
+                              </div>
                             </div>
 
                             <div style={requestControlsStyle}>
@@ -881,6 +881,18 @@ const selectStyle: React.CSSProperties = {
   border: "1px solid #334155",
   background: "#020617",
   color: "white",
+};
+
+const notesBoxStyle: React.CSSProperties = {
+  width: "100%",
+  minHeight: 80,
+  marginTop: 6,
+  padding: 10,
+  borderRadius: 10,
+  border: "1px solid #334155",
+  background: "#020617",
+  color: "white",
+  resize: "vertical",
 };
 
 const topButtonStyle: React.CSSProperties = {
