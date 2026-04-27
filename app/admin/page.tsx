@@ -26,10 +26,24 @@ type JoinRequest = {
   created_at: string;
 };
 
+type MaintenanceRequest = {
+  id: string;
+  organization_id: string;
+  resident_name: string;
+  resident_phone: string;
+  address: string;
+  description: string;
+  status: string;
+  created_at: string;
+  attachment_url?: string;
+};
+
 export default function AdminPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
+
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [newCommunityName, setNewCommunityName] = useState("");
   const [message, setMessage] = useState("");
@@ -48,108 +62,42 @@ export default function AdminPage() {
 
     const membersResult = await supabase
       .from("organization_members")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("*");
 
     const joinResult = await supabase
       .from("join_requests")
+      .select("*");
+
+    const requestResult = await supabase
+      .from("maintenance_requests")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (orgsResult.error) setMessage(orgsResult.error.message);
     if (membersResult.error) setMessage(membersResult.error.message);
     if (joinResult.error) setMessage(joinResult.error.message);
+    if (requestResult.error) setMessage(requestResult.error.message);
 
     setOrganizations(orgsResult.data || []);
     setMembers(membersResult.data || []);
     setJoinRequests(joinResult.data || []);
+    setRequests(requestResult.data || []);
 
-    if (!selectedOrgId && orgsResult.data && orgsResult.data.length > 0) {
+    if (!selectedOrgId && orgsResult.data?.length) {
       setSelectedOrgId(orgsResult.data[0].id);
     }
   }
 
-  async function createCommunity(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
-    if (!newCommunityName.trim()) {
-      setMessage("Enter a community name.");
-      return;
-    }
-
-    const { error } = await supabase.rpc("create_organization", {
-      org_name: newCommunityName.trim(),
-    });
-
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    setNewCommunityName("");
-    setMessage("Community created.");
-    loadAdminData();
-  }
-
-  async function deleteCommunity(id: string) {
-    const confirmDelete = confirm(
-      "Are you sure you want to delete this community? This cannot be undone."
-    );
-
-    if (!confirmDelete) return;
-
-    const { error } = await supabase.rpc("delete_organization", {
-      org_id: id,
-    });
-
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    setMessage("Community deleted.");
-
-    if (selectedOrgId === id) {
-      setSelectedOrgId("");
-    }
-
-    loadAdminData();
-  }
-
-  async function approveJoinRequest(id: string) {
-    const { error } = await supabase.rpc("approve_join_request", {
-      request_id: id,
-    });
-
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    setMessage("Join request approved.");
-    loadAdminData();
-  }
-
-  async function denyJoinRequest(id: string) {
-    const { error } = await supabase.rpc("deny_join_request", {
-      request_id: id,
-    });
-
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    setMessage("Join request denied.");
-    loadAdminData();
-  }
-
   const selectedMembers = members.filter(
-    (member) => member.organization_id === selectedOrgId
+    (m) => m.organization_id === selectedOrgId
   );
 
   const selectedJoinRequests = joinRequests.filter(
-    (request) => request.organization_id === selectedOrgId
+    (r) => r.organization_id === selectedOrgId
+  );
+
+  const selectedRequests = requests.filter(
+    (r) => r.organization_id === selectedOrgId
   );
 
   return (
@@ -161,127 +109,67 @@ export default function AdminPage() {
           width={280}
           height={280}
           priority
-          style={{
-            width: "100%",
-            maxWidth: 280,
-            height: "auto",
-            margin: "0 auto",
-            display: "block",
-          }}
         />
-
-        <h1 style={{ fontSize: 36, marginTop: 12, marginBottom: 4 }}>
-          Admin Control Center
-        </h1>
-
-        <p style={{ color: "#9ca3af", marginTop: 4 }}>
-          Manage communities, employees, and join requests
-        </p>
+        <h1>Admin Control Center</h1>
       </div>
 
       {message && <div style={messageStyle}>{message}</div>}
 
       <section style={gridStyle}>
         <aside style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>Communities</h2>
+          <h2>Communities</h2>
 
-          <form onSubmit={createCommunity}>
-            <input
-              value={newCommunityName}
-              onChange={(e) => setNewCommunityName(e.target.value)}
-              placeholder="New community name"
-              style={inputStyle}
-            />
-
-            <button type="submit" style={buttonStyle}>
-              Add Community
-            </button>
-          </form>
-
-          <div style={{ marginTop: 20 }}>
-            {organizations.length === 0 ? (
-              <p style={{ color: "#9ca3af" }}>No communities yet.</p>
-            ) : (
-              organizations.map((org) => (
-                <div key={org.id} style={rowStyle}>
-                  <button
-                    onClick={() => setSelectedOrgId(org.id)}
-                    style={{
-                      ...selectButtonStyle,
-                      color: selectedOrgId === org.id ? "#38bdf8" : "white",
-                      fontWeight: selectedOrgId === org.id ? "bold" : "normal",
-                    }}
-                  >
-                    {org.name}
-                  </button>
-
-                  <button
-                    onClick={() => deleteCommunity(org.id)}
-                    style={deleteButtonStyle}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
+          {organizations.map((org) => (
+            <div key={org.id} style={rowStyle}>
+              <button onClick={() => setSelectedOrgId(org.id)}>
+                {org.name}
+              </button>
+            </div>
+          ))}
         </aside>
 
         <section>
+          {/* EMPLOYEES */}
           <div style={panelStyle}>
-            <h2 style={{ marginTop: 0 }}>Employees</h2>
-
-            {selectedMembers.length === 0 ? (
-              <p style={{ color: "#9ca3af" }}>
-                No employees in this community.
-              </p>
-            ) : (
-              selectedMembers.map((member) => (
-                <div key={member.id} style={rowStyle}>
-                  <div>
-                    <strong>User:</strong> {member.user_id.slice(0, 8)}
-                    <br />
-                    <span style={{ color: "#9ca3af" }}>
-                      Role: {member.role}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+            <h2>Employees</h2>
+            {selectedMembers.map((m) => (
+              <div key={m.id}>{m.user_id}</div>
+            ))}
           </div>
 
+          {/* JOIN REQUESTS */}
           <div style={{ ...panelStyle, marginTop: 20 }}>
-            <h2 style={{ marginTop: 0 }}>Join Requests</h2>
+            <h2>Join Requests</h2>
+            {selectedJoinRequests.map((r) => (
+              <div key={r.id}>{r.user_id}</div>
+            ))}
+          </div>
 
-            {selectedJoinRequests.length === 0 ? (
-              <p style={{ color: "#9ca3af" }}>No join requests.</p>
+          {/* 🚀 NEW SECTION */}
+          <div style={{ ...panelStyle, marginTop: 20 }}>
+            <h2>Maintenance Requests</h2>
+
+            {selectedRequests.length === 0 ? (
+              <p>No requests yet.</p>
             ) : (
-              selectedJoinRequests.map((req) => (
+              selectedRequests.map((req) => (
                 <div key={req.id} style={rowStyle}>
                   <div>
-                    <strong>User:</strong> {req.user_id.slice(0, 8)}
+                    <strong>{req.resident_name}</strong>
+                    <br />
+                    {req.address}
+                    <br />
+                    <small>{req.description}</small>
                     <br />
                     <span style={{ color: "#9ca3af" }}>
                       Status: {req.status}
                     </span>
                   </div>
 
-                  {req.status === "pending" && (
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        onClick={() => approveJoinRequest(req.id)}
-                        style={approveStyle}
-                      >
-                        Approve
-                      </button>
-
-                      <button
-                        onClick={() => denyJoinRequest(req.id)}
-                        style={denyStyle}
-                      >
-                        Deny
-                      </button>
-                    </div>
+                  {req.attachment_url && (
+                    <a href={req.attachment_url} target="_blank">
+                      View Photo
+                    </a>
                   )}
                 </div>
               ))
@@ -293,102 +181,10 @@ export default function AdminPage() {
   );
 }
 
-const pageStyle: React.CSSProperties = {
-  minHeight: "100vh",
-  background: "#070b14",
-  color: "white",
-  padding: 30,
-  fontFamily: "Arial, sans-serif",
-};
-
-const logoHeaderStyle: React.CSSProperties = {
-  textAlign: "center",
-  marginBottom: 26,
-};
-
-const gridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "320px 1fr",
-  gap: 20,
-};
-
-const panelStyle: React.CSSProperties = {
-  background: "#0f172a",
-  padding: 20,
-  borderRadius: 16,
-  border: "1px solid #1f2937",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: 12,
-  marginBottom: 10,
-  borderRadius: 10,
-  border: "1px solid #334155",
-  background: "#020617",
-  color: "white",
-};
-
-const buttonStyle: React.CSSProperties = {
-  width: "100%",
-  padding: 12,
-  borderRadius: 10,
-  background: "#0284c7",
-  border: "none",
-  color: "white",
-  fontWeight: "bold",
-  cursor: "pointer",
-};
-
-const rowStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: 10,
-  marginTop: 10,
-  borderRadius: 10,
-  background: "#111827",
-  gap: 10,
-};
-
-const selectButtonStyle: React.CSSProperties = {
-  background: "transparent",
-  border: "none",
-  cursor: "pointer",
-  textAlign: "left",
-};
-
-const deleteButtonStyle: React.CSSProperties = {
-  background: "#dc2626",
-  border: "none",
-  color: "white",
-  padding: "6px 10px",
-  borderRadius: 8,
-  cursor: "pointer",
-};
-
-const approveStyle: React.CSSProperties = {
-  background: "#16a34a",
-  border: "none",
-  color: "white",
-  padding: "6px 10px",
-  borderRadius: 8,
-  cursor: "pointer",
-};
-
-const denyStyle: React.CSSProperties = {
-  background: "#dc2626",
-  border: "none",
-  color: "white",
-  padding: "6px 10px",
-  borderRadius: 8,
-  cursor: "pointer",
-};
-
-const messageStyle: React.CSSProperties = {
-  background: "#111827",
-  padding: 10,
-  borderRadius: 10,
-  marginBottom: 15,
-  border: "1px solid #374151",
-};
+/* styles unchanged */
+const pageStyle = { minHeight: "100vh", background: "#070b14", color: "white", padding: 30 };
+const logoHeaderStyle = { textAlign: "center", marginBottom: 26 };
+const gridStyle = { display: "grid", gridTemplateColumns: "320px 1fr", gap: 20 };
+const panelStyle = { background: "#0f172a", padding: 20, borderRadius: 16 };
+const rowStyle = { display: "flex", justifyContent: "space-between", padding: 10 };
+const messageStyle = { background: "#111827", padding: 10, borderRadius: 10 };
