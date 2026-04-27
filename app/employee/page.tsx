@@ -51,9 +51,11 @@ type MaintenanceRequest = {
 
 export default function EmployeePage() {
   const [userLoggedIn, setUserLoggedIn] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [memberships, setMemberships] = useState<Member[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [assignedTasks, setAssignedTasks] = useState<MaintenanceRequest[]>([]);
   const [selectedOwnerOrgId, setSelectedOwnerOrgId] = useState("");
 
   const [ownerMembers, setOwnerMembers] = useState<Member[]>([]);
@@ -89,6 +91,7 @@ export default function EmployeePage() {
 
     setUserLoggedIn(true);
     const userId = userData.user.id;
+    setCurrentUserId(userId);
 
     const profileResult = await supabase
       .from("profiles")
@@ -131,6 +134,12 @@ export default function EmployeePage() {
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
+    const assignedTasksResult = await supabase
+      .from("maintenance_requests")
+      .select("*")
+      .eq("assigned_to", userId)
+      .order("created_at", { ascending: false });
+
     if (membershipsResult.error) {
       setMessage(membershipsResult.error.message);
     }
@@ -139,8 +148,13 @@ export default function EmployeePage() {
       setMessage(joinRequestsResult.error.message);
     }
 
+    if (assignedTasksResult.error) {
+      setMessage(assignedTasksResult.error.message);
+    }
+
     setMemberships((membershipsResult.data || []) as unknown as Member[]);
     setJoinRequests((joinRequestsResult.data || []) as unknown as JoinRequest[]);
+    setAssignedTasks((assignedTasksResult.data || []) as MaintenanceRequest[]);
     setLoading(false);
   }
 
@@ -247,6 +261,8 @@ export default function EmployeePage() {
 
     setMessage("Maintenance request updated.");
 
+    loadEmployeeData();
+
     if (selectedOwnerOrgId) {
       loadOwnerControls(selectedOwnerOrgId);
     }
@@ -311,6 +327,63 @@ export default function EmployeePage() {
           </Panel>
         ) : (
           <>
+            <Panel title="My Assigned Tasks">
+              {assignedTasks.length === 0 ? (
+                <Empty text="You do not have any assigned maintenance tasks yet." />
+              ) : (
+                assignedTasks.map((task) => (
+                  <div key={task.id} style={rowStyle}>
+                    <div>
+                      <strong>{task.resident_name}</strong>
+                      <br />
+                      <span style={{ color: "#9ca3af" }}>{task.address}</span>
+                      <br />
+                      <span>{task.description}</span>
+                      <br />
+                      <span style={{ color: "#9ca3af" }}>
+                        Status: {task.status}
+                      </span>
+
+                      {task.notes && (
+                        <div style={{ marginTop: 10 }}>
+                          <strong>Notes</strong>
+                          <p style={{ color: "#9ca3af", marginBottom: 0 }}>
+                            {task.notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={requestControlsStyle}>
+                      <select
+                        value={task.status || "New"}
+                        onChange={(e) =>
+                          updateMaintenanceRequest(task.id, {
+                            status: e.target.value,
+                          })
+                        }
+                        style={selectStyle}
+                      >
+                        <option value="New">New</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                      </select>
+
+                      {task.attachment_url && (
+                        <a
+                          href={task.attachment_url}
+                          target="_blank"
+                          style={linkButtonStyle}
+                        >
+                          View Photo
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </Panel>
+
             <section style={choiceGridStyle}>
               <ActionCard
                 title="Create Managerial Account"
