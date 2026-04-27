@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
+const APP_URL = "https://kjd-solutions-m1m01dpiy-qajesserileys-projects.vercel.app";
+
 type Organization = {
   id: string;
   name: string;
@@ -88,6 +90,12 @@ export default function AdminPage() {
     }
   }
 
+  function copyRequestLink(orgId: string) {
+    const link = `${APP_URL}/?org=${orgId}`;
+    navigator.clipboard.writeText(link);
+    setMessage("Request link copied.");
+  }
+
   const selectedMembers = members.filter(
     (m) => m.organization_id === selectedOrgId
   );
@@ -126,6 +134,13 @@ export default function AdminPage() {
                 <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
                   ID: {org.id}
                 </div>
+              </button>
+
+              <button
+                onClick={() => copyRequestLink(org.id)}
+                style={linkButtonStyle}
+              >
+                Copy Request Link
               </button>
             </div>
           ))}
@@ -191,3 +206,11 @@ const gridStyle = { display: "grid", gridTemplateColumns: "320px 1fr", gap: 20 }
 const panelStyle = { background: "#0f172a", padding: 20, borderRadius: 16 };
 const rowStyle = { display: "flex", justifyContent: "space-between", padding: 10 };
 const messageStyle = { background: "#111827", padding: 10, borderRadius: 10 };
+const linkButtonStyle = {
+  background: "#0284c7",
+  border: "none",
+  color: "white",
+  padding: "6px 10px",
+  borderRadius: 8,
+  cursor: "pointer",
+};
