@@ -1,39 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-
-type Profile = {
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-  avatar_url: string | null;
-};
-
-type Member = {
-  id: string;
-  organization_id: string;
-  user_id: string;
-  role: string;
-  organizations?: {
-    id: string;
-    name: string;
-    logo_url: string | null;
-  };
-};
-
-type JoinRequest = {
-  id: string;
-  organization_id: string;
-  user_id: string;
-  status: string;
-  organizations?: {
-    id: string;
-    name: string;
-    logo_url: string | null;
-  };
-};
 
 type MaintenanceRequest = {
   id: string;
@@ -50,61 +18,85 @@ type MaintenanceRequest = {
 };
 
 export default function EmployeePage() {
-  const [userLoggedIn, setUserLoggedIn] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState("");
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [memberships, setMemberships] = useState<Member[]>([]);
-  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [assignedTasks, setAssignedTasks] = useState<MaintenanceRequest[]>([]);
-  const [selectedOwnerOrgId, setSelectedOwnerOrgId] = useState("");
-
-  const [ownerMembers, setOwnerMembers] = useState<Member[]>([]);
-  const [ownerJoinRequests, setOwnerJoinRequests] = useState<JoinRequest[]>([]);
-  const [ownerMaintenanceRequests, setOwnerMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
-
-  const [message, setMessage] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
   const [loading, setLoading] = useState(true);
-  const [ownerLoading, setOwnerLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     loadEmployeeData();
   }, []);
 
   useEffect(() => {
-    if (selectedOwnerOrgId) {
-      loadOwnerControls(selectedOwnerOrgId);
-    }
-  }, [selectedOwnerOrgId]);
+    if (!currentUserId) return;
 
-  async function loadEmployeeData() {
-    setLoading(true);
+    const channel = supabase
+      .channel("employee-assigned-tasks-live")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "maintenance_requests",
+        },
+        () => {
+          loadEmployeeData(false);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
+  async function loadEmployeeData(showLoading = true) {
+    if (showLoading) setLoading(true);
     setMessage("");
 
     const { data: userData } = await supabase.auth.getUser();
 
     if (!userData.user) {
-      setUserLoggedIn(false);
+      setMessage("You must be logged in to view this page.");
       setLoading(false);
       return;
     }
 
-    setUserLoggedIn(true);
     const userId = userData.user.id;
     setCurrentUserId(userId);
 
-    const { data: tasks } = await supabase
+    const { data, error } = await supabase
       .from("maintenance_requests")
       .select("*")
       .eq("assigned_to", userId)
       .order("created_at", { ascending: false });
 
-    setAssignedTasks(tasks || []);
+    if (error) {
+      setMessage(error.message);
+      setLoading(false);
+      return;
+    }
+
+    setAssignedTasks(data || []);
     setLoading(false);
   }
 
-  async function updateMaintenanceRequest(id: string, updates: any) {
-    await supabase.from("maintenance_requests").update(updates).eq("id", id);
-    loadEmployeeData();
+  async function updateMaintenanceRequest(
+    id: string,
+    updates: Partial<MaintenanceRequest>
+  ) {
+    const { error } = await supabase
+      .from("maintenance_requests")
+      .update(updates)
+      .eq("id", id);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Task updated.");
+    loadEmployeeData(false);
   }
 
   return (
@@ -112,16 +104,20 @@ export default function EmployeePage() {
       <section style={{ maxWidth: 900, margin: "0 auto" }}>
         <h1>My Assigned Tasks</h1>
 
-        {assignedTasks.length === 0 ? (
+        {message && <div style={messageStyle}>{message}</div>}
+
+        {loading ? (
+          <p>Loading tasks...</p>
+        ) : assignedTasks.length === 0 ? (
           <p>No assigned tasks</p>
         ) : (
           assignedTasks.map((task) => (
             <div key={task.id} style={rowStyle}>
               <div>
                 <strong>{task.resident_name}</strong>
+                <p style={{ color: "#9ca3af" }}>{task.address}</p>
                 <p>{task.description}</p>
 
-                {/* ✅ UPDATED NOTES SECTION */}
                 <div>
                   <strong>Notes</strong>
                   <textarea
@@ -136,18 +132,27 @@ export default function EmployeePage() {
                 </div>
               </div>
 
-              <select
-                value={task.status}
-                onChange={(e) =>
-                  updateMaintenanceRequest(task.id, {
-                    status: e.target.value,
-                  })
-                }
-              >
-                <option>New</option>
-                <option>In Progress</option>
-                <option>Completed</option>
-              </select>
+              <div style={controlsStyle}>
+                <select
+                  value={task.status || "New"}
+                  onChange={(e) =>
+                    updateMaintenanceRequest(task.id, {
+                      status: e.target.value,
+                    })
+                  }
+                  style={selectStyle}
+                >
+                  <option value="New">New</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+
+                {task.attachment_url && (
+                  <a href={task.attachment_url} target="_blank" style={buttonStyle}>
+                    View Photo
+                  </a>
+                )}
+              </div>
             </div>
           ))
         )}
@@ -168,6 +173,24 @@ const rowStyle: React.CSSProperties = {
   padding: 15,
   marginBottom: 10,
   borderRadius: 10,
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 16,
+};
+
+const controlsStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  minWidth: 180,
+};
+
+const selectStyle: React.CSSProperties = {
+  padding: 10,
+  borderRadius: 10,
+  background: "#020617",
+  color: "white",
+  border: "1px solid #334155",
 };
 
 const notesBoxStyle: React.CSSProperties = {
@@ -179,4 +202,22 @@ const notesBoxStyle: React.CSSProperties = {
   border: "1px solid #334155",
   background: "#020617",
   color: "white",
+};
+
+const messageStyle: React.CSSProperties = {
+  background: "#111827",
+  padding: 12,
+  borderRadius: 10,
+  marginBottom: 15,
+  border: "1px solid #374151",
+};
+
+const buttonStyle: React.CSSProperties = {
+  padding: 10,
+  borderRadius: 10,
+  background: "#0284c7",
+  color: "white",
+  textDecoration: "none",
+  textAlign: "center",
+  fontWeight: "bold",
 };
