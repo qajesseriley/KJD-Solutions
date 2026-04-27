@@ -122,7 +122,10 @@ export default function AdminPage() {
           {organizations.map((org) => (
             <div key={org.id} style={rowStyle}>
               <button onClick={() => setSelectedOrgId(org.id)}>
-                {org.name}
+                <div>{org.name}</div>
+                <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
+                  ID: {org.id}
+                </div>
               </button>
             </div>
           ))}
