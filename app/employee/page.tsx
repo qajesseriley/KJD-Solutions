@@ -40,6 +40,7 @@ export default function EmployeePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [memberships, setMemberships] = useState<Member[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [selectedOwnerOrgId, setSelectedOwnerOrgId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -125,6 +126,10 @@ export default function EmployeePage() {
   const highestRole = getHighestRole(memberships);
   const displayName = profile?.full_name || profile?.email || "Employee";
 
+  const selectedOwnerMembership = memberships.find(
+    (member) => member.organization_id === selectedOwnerOrgId
+  );
+
   return (
     <main style={pageStyle}>
       <section style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -202,6 +207,29 @@ export default function EmployeePage() {
               />
             </div>
 
+            {selectedOwnerMembership && (
+              <Panel
+                title={`Owner Controls: ${
+                  selectedOwnerMembership.organizations?.name || "Community"
+                }`}
+              >
+                <p style={{ color: "#9ca3af", marginTop: 0 }}>
+                  Owner/admin tools for this community will live here instead of
+                  a separate org admin page.
+                </p>
+
+                <div style={rowStyle}>
+                  <div>
+                    <strong>Community ID</strong>
+                    <br />
+                    <span style={{ color: "#9ca3af" }}>
+                      {selectedOwnerMembership.organization_id}
+                    </span>
+                  </div>
+                </div>
+              </Panel>
+            )}
+
             <div style={twoColumnStyle}>
               <Panel title="Your Communities">
                 {memberships.length === 0 ? (
@@ -226,18 +254,21 @@ export default function EmployeePage() {
                         </div>
                       </div>
 
-                      <Link
-                        href={
-                          member.role === "owner" ||
-                          member.role === "admin" ||
-                          member.role === "manager"
-                            ? `/org-admin?community=${member.organization_id}`
-                            : `/dashboard?community=${member.organization_id}`
-                        }
-                        style={linkButtonStyle}
-                      >
-                        Open
-                      </Link>
+                      {isOwnerLevel(member.role) ? (
+                        <button
+                          onClick={() => setSelectedOwnerOrgId(member.organization_id)}
+                          style={linkButtonStyle}
+                        >
+                          Owner Tools
+                        </button>
+                      ) : (
+                        <Link
+                          href={`/dashboard?community=${member.organization_id}`}
+                          style={linkButtonStyle}
+                        >
+                          Open
+                        </Link>
+                      )}
                     </div>
                   ))
                 )}
@@ -277,6 +308,10 @@ export default function EmployeePage() {
       </section>
     </main>
   );
+}
+
+function isOwnerLevel(role: string) {
+  return role === "owner" || role === "admin" || role === "manager";
 }
 
 function Avatar({ profile }: { profile: Profile | null }) {
@@ -500,6 +535,7 @@ const panelStyle: React.CSSProperties = {
   borderRadius: 18,
   padding: 20,
   border: "1px solid #1f2937",
+  marginBottom: 24,
 };
 
 const statCardStyle: React.CSSProperties = {
@@ -554,6 +590,8 @@ const linkButtonStyle: React.CSSProperties = {
   color: "white",
   textDecoration: "none",
   fontWeight: "bold",
+  border: "none",
+  cursor: "pointer",
 };
 
 const fullButtonStyle: React.CSSProperties = {
