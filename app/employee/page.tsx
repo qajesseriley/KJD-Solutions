@@ -35,18 +35,44 @@ type JoinRequest = {
   };
 };
 
+type MaintenanceRequest = {
+  id: string;
+  organization_id: string;
+  resident_name: string;
+  resident_phone: string;
+  address: string;
+  description: string;
+  status: string;
+  created_at: string;
+  attachment_url?: string | null;
+};
+
 export default function EmployeePage() {
   const [userLoggedIn, setUserLoggedIn] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [memberships, setMemberships] = useState<Member[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [selectedOwnerOrgId, setSelectedOwnerOrgId] = useState("");
+
+  const [ownerMembers, setOwnerMembers] = useState<Member[]>([]);
+  const [ownerJoinRequests, setOwnerJoinRequests] = useState<JoinRequest[]>([]);
+  const [ownerMaintenanceRequests, setOwnerMaintenanceRequests] = useState<
+    MaintenanceRequest[]
+  >([]);
+
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [ownerLoading, setOwnerLoading] = useState(false);
 
   useEffect(() => {
     loadEmployeeData();
   }, []);
+
+  useEffect(() => {
+    if (selectedOwnerOrgId) {
+      loadOwnerControls(selectedOwnerOrgId);
+    }
+  }, [selectedOwnerOrgId]);
 
   async function loadEmployeeData() {
     setLoading(true);
@@ -116,6 +142,106 @@ export default function EmployeePage() {
     setMemberships((membershipsResult.data || []) as unknown as Member[]);
     setJoinRequests((joinRequestsResult.data || []) as unknown as JoinRequest[]);
     setLoading(false);
+  }
+
+  async function loadOwnerControls(orgId: string) {
+    setOwnerLoading(true);
+    setMessage("");
+
+    const membersResult = await supabase
+      .from("organization_members")
+      .select(`
+        id,
+        organization_id,
+        user_id,
+        role,
+        organizations (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .eq("organization_id", orgId);
+
+    const joinRequestsResult = await supabase
+      .from("join_requests")
+      .select(`
+        id,
+        organization_id,
+        user_id,
+        status,
+        organizations (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .eq("organization_id", orgId)
+      .order("created_at", { ascending: false });
+
+    const maintenanceRequestsResult = await supabase
+      .from("maintenance_requests")
+      .select("*")
+      .eq("organization_id", orgId)
+      .order("created_at", { ascending: false });
+
+    if (membersResult.error) {
+      setMessage(membersResult.error.message);
+    }
+
+    if (joinRequestsResult.error) {
+      setMessage(joinRequestsResult.error.message);
+    }
+
+    if (maintenanceRequestsResult.error) {
+      setMessage(maintenanceRequestsResult.error.message);
+    }
+
+    setOwnerMembers((membersResult.data || []) as unknown as Member[]);
+    setOwnerJoinRequests(
+      (joinRequestsResult.data || []) as unknown as JoinRequest[]
+    );
+    setOwnerMaintenanceRequests(
+      (maintenanceRequestsResult.data || []) as MaintenanceRequest[]
+    );
+
+    setOwnerLoading(false);
+  }
+
+  async function approveJoinRequest(id: string) {
+    const { error } = await supabase.rpc("approve_join_request", {
+      request_id: id,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Join request approved.");
+    loadEmployeeData();
+
+    if (selectedOwnerOrgId) {
+      loadOwnerControls(selectedOwnerOrgId);
+    }
+  }
+
+  async function denyJoinRequest(id: string) {
+    const { error } = await supabase.rpc("deny_join_request", {
+      request_id: id,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Join request denied.");
+    loadEmployeeData();
+
+    if (selectedOwnerOrgId) {
+      loadOwnerControls(selectedOwnerOrgId);
+    }
   }
 
   async function signOut() {
@@ -214,8 +340,8 @@ export default function EmployeePage() {
                 }`}
               >
                 <p style={{ color: "#9ca3af", marginTop: 0 }}>
-                  Owner/admin tools for this community will live here instead of
-                  a separate org admin page.
+                  Owner/admin tools for this community now live here inside the
+                  employee page.
                 </p>
 
                 <div style={rowStyle}>
@@ -227,6 +353,108 @@ export default function EmployeePage() {
                     </span>
                   </div>
                 </div>
+
+                {ownerLoading ? (
+                  <p style={{ color: "#9ca3af" }}>Loading owner controls...</p>
+                ) : (
+                  <>
+                    <div style={ownerGridStyle}>
+                      <section style={miniPanelStyle}>
+                        <h3 style={{ marginTop: 0 }}>Employees</h3>
+
+                        {ownerMembers.length === 0 ? (
+                          <Empty text="No employees in this community yet." />
+                        ) : (
+                          ownerMembers.map((member) => (
+                            <div key={member.id} style={rowStyle}>
+                              <div>
+                                <strong>User:</strong> {member.user_id.slice(0, 8)}
+                                <br />
+                                <span style={{ color: "#9ca3af" }}>
+                                  Role: {titleCase(member.role)}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </section>
+
+                      <section style={miniPanelStyle}>
+                        <h3 style={{ marginTop: 0 }}>Join Requests</h3>
+
+                        {ownerJoinRequests.length === 0 ? (
+                          <Empty text="No join requests for this community." />
+                        ) : (
+                          ownerJoinRequests.map((request) => (
+                            <div key={request.id} style={rowStyle}>
+                              <div>
+                                <strong>User:</strong> {request.user_id.slice(0, 8)}
+                                <br />
+                                <span style={{ color: "#9ca3af" }}>
+                                  Status: {request.status}
+                                </span>
+                              </div>
+
+                              {request.status === "pending" && (
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <button
+                                    onClick={() => approveJoinRequest(request.id)}
+                                    style={approveButtonStyle}
+                                  >
+                                    Approve
+                                  </button>
+
+                                  <button
+                                    onClick={() => denyJoinRequest(request.id)}
+                                    style={denyButtonStyle}
+                                  >
+                                    Deny
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </section>
+                    </div>
+
+                    <section style={miniPanelStyle}>
+                      <h3 style={{ marginTop: 0 }}>Maintenance Requests</h3>
+
+                      {ownerMaintenanceRequests.length === 0 ? (
+                        <Empty text="No maintenance requests for this community yet." />
+                      ) : (
+                        ownerMaintenanceRequests.map((request) => (
+                          <div key={request.id} style={rowStyle}>
+                            <div>
+                              <strong>{request.resident_name}</strong>
+                              <br />
+                              <span style={{ color: "#9ca3af" }}>
+                                {request.address}
+                              </span>
+                              <br />
+                              <span>{request.description}</span>
+                              <br />
+                              <span style={{ color: "#9ca3af" }}>
+                                Status: {request.status}
+                              </span>
+                            </div>
+
+                            {request.attachment_url && (
+                              <a
+                                href={request.attachment_url}
+                                target="_blank"
+                                style={linkButtonStyle}
+                              >
+                                View Photo
+                              </a>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </section>
+                  </>
+                )}
               </Panel>
             )}
 
@@ -523,6 +751,12 @@ const twoColumnStyle: React.CSSProperties = {
   gap: 24,
 };
 
+const ownerGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 16,
+};
+
 const actionCardStyle: React.CSSProperties = {
   background: "#0f172a",
   borderRadius: 18,
@@ -536,6 +770,13 @@ const panelStyle: React.CSSProperties = {
   padding: 20,
   border: "1px solid #1f2937",
   marginBottom: 24,
+};
+
+const miniPanelStyle: React.CSSProperties = {
+  background: "#020617",
+  borderRadius: 14,
+  padding: 16,
+  border: "1px solid #1f2937",
 };
 
 const statCardStyle: React.CSSProperties = {
@@ -592,6 +833,26 @@ const linkButtonStyle: React.CSSProperties = {
   fontWeight: "bold",
   border: "none",
   cursor: "pointer",
+};
+
+const approveButtonStyle: React.CSSProperties = {
+  padding: "7px 10px",
+  borderRadius: 10,
+  background: "#16a34a",
+  color: "white",
+  border: "none",
+  cursor: "pointer",
+  fontWeight: "bold",
+};
+
+const denyButtonStyle: React.CSSProperties = {
+  padding: "7px 10px",
+  borderRadius: 10,
+  background: "#dc2626",
+  color: "white",
+  border: "none",
+  cursor: "pointer",
+  fontWeight: "bold",
 };
 
 const fullButtonStyle: React.CSSProperties = {
