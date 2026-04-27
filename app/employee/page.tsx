@@ -44,6 +44,7 @@ type MaintenanceRequest = {
   description: string;
   status: string;
   created_at: string;
+  assigned_to?: string | null;
   attachment_url?: string | null;
 };
 
@@ -244,6 +245,27 @@ export default function EmployeePage() {
     }
   }
 
+  async function updateMaintenanceRequest(
+    requestId: string,
+    updates: Partial<MaintenanceRequest>
+  ) {
+    const { error } = await supabase
+      .from("maintenance_requests")
+      .update(updates)
+      .eq("id", requestId);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Maintenance request updated.");
+
+    if (selectedOwnerOrgId) {
+      loadOwnerControls(selectedOwnerOrgId);
+    }
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     window.location.href = "/login";
@@ -438,17 +460,58 @@ export default function EmployeePage() {
                               <span style={{ color: "#9ca3af" }}>
                                 Status: {request.status}
                               </span>
+                              <br />
+                              <span style={{ color: "#9ca3af" }}>
+                                Assigned To:{" "}
+                                {request.assigned_to
+                                  ? request.assigned_to.slice(0, 8)
+                                  : "Unassigned"}
+                              </span>
                             </div>
 
-                            {request.attachment_url && (
-                              <a
-                                href={request.attachment_url}
-                                target="_blank"
-                                style={linkButtonStyle}
+                            <div style={requestControlsStyle}>
+                              <select
+                                value={request.status || "New"}
+                                onChange={(e) =>
+                                  updateMaintenanceRequest(request.id, {
+                                    status: e.target.value,
+                                  })
+                                }
+                                style={selectStyle}
                               >
-                                View Photo
-                              </a>
-                            )}
+                                <option value="New">New</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Completed">Completed</option>
+                              </select>
+
+                              <select
+                                value={request.assigned_to || ""}
+                                onChange={(e) =>
+                                  updateMaintenanceRequest(request.id, {
+                                    assigned_to: e.target.value || null,
+                                  })
+                                }
+                                style={selectStyle}
+                              >
+                                <option value="">Unassigned</option>
+                                {ownerMembers.map((member) => (
+                                  <option key={member.id} value={member.user_id}>
+                                    {member.user_id.slice(0, 8)} —{" "}
+                                    {titleCase(member.role)}
+                                  </option>
+                                ))}
+                              </select>
+
+                              {request.attachment_url && (
+                                <a
+                                  href={request.attachment_url}
+                                  target="_blank"
+                                  style={linkButtonStyle}
+                                >
+                                  View Photo
+                                </a>
+                              )}
+                            </div>
                           </div>
                         ))
                       )}
@@ -803,6 +866,21 @@ const rowStyle: React.CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   gap: 12,
+};
+
+const requestControlsStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  minWidth: 180,
+};
+
+const selectStyle: React.CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: 10,
+  border: "1px solid #334155",
+  background: "#020617",
+  color: "white",
 };
 
 const topButtonStyle: React.CSSProperties = {
