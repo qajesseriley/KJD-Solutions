@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import QRCode from "qrcode.react";
 import { supabase } from "@/lib/supabase";
 
 const APP_URL = "https://kjd-solutions-m1m01dpiy-qajesserileys-projects.vercel.app";
@@ -129,12 +130,19 @@ export default function AdminPage() {
 
           {organizations.map((org) => (
             <div key={org.id} style={rowStyle}>
-              <button onClick={() => setSelectedOrgId(org.id)}>
-                <div>{org.name}</div>
-                <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
-                  ID: {org.id}
+              <div>
+                <button onClick={() => setSelectedOrgId(org.id)}>
+                  <div>{org.name}</div>
+                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
+                    ID: {org.id}
+                  </div>
+                </button>
+
+                {/* ✅ QR CODE ADDED */}
+                <div style={{ marginTop: 10 }}>
+                  <QRCode value={`${APP_URL}/?org=${org.id}`} size={80} />
                 </div>
-              </button>
+              </div>
 
               <button
                 onClick={() => copyRequestLink(org.id)}
