@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -17,9 +17,16 @@ const CATEGORY_OPTIONS = [
   "General Maintenance",
 ];
 
+type OrganizationBranding = {
+  name: string;
+  logo_url: string | null;
+};
+
 function ResidentRequestForm() {
   const searchParams = useSearchParams();
   const orgId = searchParams.get("org") || searchParams.get("organization_id") || "";
+
+  const [organization, setOrganization] = useState<OrganizationBranding | null>(null);
 
   const [residentName, setResidentName] = useState("");
   const [residentPhone, setResidentPhone] = useState("");
@@ -31,6 +38,24 @@ function ResidentRequestForm() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    async function loadOrganizationBranding() {
+      if (!orgId) return;
+
+      const { data } = await supabase
+        .from("organizations")
+        .select("name, logo_url")
+        .eq("id", orgId)
+        .single();
+
+      if (data) {
+        setOrganization(data as OrganizationBranding);
+      }
+    }
+
+    loadOrganizationBranding();
+  }, [orgId]);
 
   const canSubmit = useMemo(() => {
     return (
@@ -120,12 +145,20 @@ function ResidentRequestForm() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#1e293b_0%,_#0f172a_45%,_#020617_100%)] px-4 py-8 text-white">
       <section className="mx-auto max-w-2xl rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
         <div className="mb-7 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-400/10 text-xl font-bold text-amber-200">
-            KJD
-          </div>
+          {organization?.logo_url ? (
+            <img
+              src={organization.logo_url}
+              alt={`${organization.name} logo`}
+              className="mx-auto mb-4 h-20 w-20 rounded-2xl border border-white/10 bg-black/20 object-cover"
+            />
+          ) : (
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-400/10 text-xl font-bold text-amber-200">
+              {(organization?.name || "KJD").charAt(0).toUpperCase()}
+            </div>
+          )}
 
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Resident Maintenance Request
+            {organization?.name || "Resident Maintenance Request"}
           </div>
 
           <h1 className="mt-2 text-3xl font-bold tracking-tight">
