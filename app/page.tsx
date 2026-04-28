@@ -105,42 +105,21 @@ function MaintenanceRequestForm() {
         throw new Error(photoValidationError)
       }
 
-      setSubmitStep('Saving maintenance request...')
+      const requestId = crypto.randomUUID()
 
       const fullDescription = cleaned.details
         ? `${cleaned.title}\n\n${cleaned.details}`
         : cleaned.title
 
-      const { data: requestData, error: requestError } = await supabase
-        .from('maintenance_requests')
-        .insert([
-          {
-            organization_id: organizationId,
-            resident_name: cleaned.name,
-            resident_phone: cleaned.phone,
-            address: cleaned.address,
-            description: fullDescription,
-            status: 'New',
-            priority: 'Normal',
-            assigned_to: null,
-            category: cleaned.category,
-          },
-        ])
-        .select()
-        .single()
-
-      if (requestError) throw requestError
-
-      if (!requestData?.id) {
-        throw new Error('Request was not created.')
-      }
+      let attachmentUrl: string | null = null
+      let attachmentName: string | null = null
 
       if (photo) {
         setSubmitStep('Uploading photo...')
 
         const fileExt = photo.name.split('.').pop() || 'jpg'
         const safeFileExt = fileExt.toLowerCase()
-        const filePath = `${requestData.id}/${Date.now()}.${safeFileExt}`
+        const filePath = `${requestId}/${Date.now()}.${safeFileExt}`
 
         const { error: uploadError } = await supabase.storage
           .from('request-attachments')
@@ -156,21 +135,38 @@ function MaintenanceRequestForm() {
           throw new Error('Photo uploaded, but no public URL was returned.')
         }
 
-        setSubmitStep('Linking photo to request...')
-
-        const { error: updateRequestError } = await supabase
-          .from('maintenance_requests')
-          .update({
-            attachment_url: publicUrlData.publicUrl,
-            attachment_name: photo.name,
-          })
-          .eq('id', requestData.id)
-
-        if (updateRequestError) throw updateRequestError
+        attachmentUrl = publicUrlData.publicUrl
+        attachmentName = photo.name
       }
 
+      setSubmitStep('Saving maintenance request...')
+
+      const { error: requestError } = await supabase
+        .from('maintenance_requests')
+        .insert([
+          {
+            id: requestId,
+            organization_id: organizationId,
+            resident_name: cleaned.name,
+            resident_phone: cleaned.phone,
+            phone: cleaned.phone,
+            address: cleaned.address,
+            maintenance_request: cleaned.title,
+            details: cleaned.details || null,
+            description: fullDescription,
+            status: 'New',
+            priority: 'Normal',
+            assigned_to: null,
+            category: cleaned.category,
+            attachment_url: attachmentUrl,
+            attachment_name: attachmentName,
+          },
+        ])
+
+      if (requestError) throw requestError
+
       setMessage('Your maintenance request has been submitted successfully.')
-      setDebugInfo(`Request ID: ${requestData.id}`)
+      setDebugInfo(`Request ID: ${requestId}`)
 
       setForm({
         name: '',
