@@ -146,7 +146,7 @@ export default function EmployeePage() {
 
   const residentRequestLink = useMemo(() => {
     if (!selectedOrganizationId || typeof window === "undefined") return "";
-    return `${window.location.origin}/?org=${selectedOrganizationId}`;
+    return `${window.location.origin}/resident-request?org=${selectedOrganizationId}`;
   }, [selectedOrganizationId]);
 
   const qrCodeUrl = useMemo(() => {
