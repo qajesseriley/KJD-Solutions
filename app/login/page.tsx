@@ -34,11 +34,8 @@ export default function LoginPage() {
         if (error) throw error;
 
         if (!data.session) {
-          setMessage(
-            "Account created. Please check your email and confirm your account before signing in."
-          );
+          setMessage("Account created. Please check your email and confirm your account before signing in.");
         } else {
-          setMessage("Account created and signed in.");
           window.location.href = "/dashboard";
         }
 
@@ -61,7 +58,6 @@ export default function LoginPage() {
     } catch (err: any) {
       let msg = err?.message || "Something went wrong.";
 
-      // 🔥 Cleaner error messages
       if (msg.includes("Invalid login credentials")) {
         msg = "Invalid email or password.";
       }
@@ -79,22 +75,24 @@ export default function LoginPage() {
   return (
     <main style={pageStyle}>
       <section style={cardStyle}>
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={logoWrapStyle}>
           <Image
             src="/kjd-logo.png"
             alt="KJD Solutions Logo"
-            width={240}
-            height={240}
+            width={210}
+            height={210}
             priority
-            style={{ maxWidth: 240, width: "100%", height: "auto" }}
+            style={logoStyle}
           />
 
-          <h1 style={{ color: "white" }}>
+          <h1 style={titleStyle}>
             {mode === "login" ? "Employee Login" : "Create Account"}
           </h1>
+
+          <p style={subtitleStyle}>KJD Solutions Maintenance Portal</p>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={formStyle}>
           {mode === "signup" && (
             <>
               <input
@@ -159,7 +157,6 @@ export default function LoginPage() {
   );
 }
 
-/* styles */
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
   background:
@@ -167,50 +164,98 @@ const pageStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+  padding: 24,
+  fontFamily: "Arial, sans-serif",
 };
 
 const cardStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: 460,
-  background: "rgba(10, 15, 25, 0.94)",
+  background: "rgba(10, 15, 25, 0.96)",
+  border: "1px solid rgba(255,255,255,0.12)",
   borderRadius: 24,
-  padding: 32,
+  padding: "34px 34px 30px",
+  boxShadow: "0 25px 80px rgba(0,0,0,0.65)",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+};
+
+const logoWrapStyle: React.CSSProperties = {
+  width: "100%",
+  textAlign: "center",
+  marginBottom: 22,
+};
+
+const logoStyle: React.CSSProperties = {
+  width: 210,
+  height: 210,
+  objectFit: "contain",
+  display: "block",
+  margin: "0 auto 10px",
+};
+
+const titleStyle: React.CSSProperties = {
+  color: "white",
+  fontSize: 22,
+  margin: "0 0 6px",
+  textAlign: "center",
+};
+
+const subtitleStyle: React.CSSProperties = {
+  color: "rgba(255,255,255,0.65)",
+  fontSize: 14,
+  margin: 0,
+  textAlign: "center",
+};
+
+const formStyle: React.CSSProperties = {
+  width: "100%",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: 13,
-  borderRadius: 12,
+  boxSizing: "border-box",
+  padding: 15,
+  borderRadius: 14,
   border: "1px solid #334155",
   background: "#020617",
   color: "white",
-  marginBottom: 12,
+  marginBottom: 14,
+  fontSize: 16,
 };
 
 const buttonStyle: React.CSSProperties = {
   width: "100%",
-  padding: 13,
-  borderRadius: 12,
+  padding: 15,
+  borderRadius: 14,
   border: "none",
   background: "#0284c7",
   color: "white",
   fontWeight: "bold",
   cursor: "pointer",
+  fontSize: 16,
 };
 
 const messageStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
   marginTop: 16,
   padding: 12,
   borderRadius: 12,
   background: "#111827",
   color: "white",
+  border: "1px solid #374151",
+  textAlign: "center",
 };
 
 const switchStyle: React.CSSProperties = {
-  marginTop: 18,
+  marginTop: 20,
   width: "100%",
   background: "transparent",
   border: "none",
   color: "#38bdf8",
   cursor: "pointer",
+  fontWeight: "bold",
+  fontSize: 15,
 };
