@@ -145,8 +145,8 @@ export default function EmployeePage() {
   const canManageWork = ["owner", "admin", "manager"].includes(role);
 
   const residentRequestLink = useMemo(() => {
-    if (!selectedOrganizationId || typeof window === "undefined") return "";
-    return `${window.location.origin}/resident-request?org=${selectedOrganizationId}`;
+    if (!selectedOrganizationId) return "";
+    return `https://kjd-solutions.vercel.app/resident-request?org=${selectedOrganizationId}`;
   }, [selectedOrganizationId]);
 
   const qrCodeUrl = useMemo(() => {
