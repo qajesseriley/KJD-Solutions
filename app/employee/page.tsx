@@ -258,7 +258,6 @@ export default function EmployeePage() {
     setMemberships(foundMemberships);
 
     if (foundMemberships.length === 0) {
-      setMessage("You are not currently connected to a community.");
       setLoading(false);
       return;
     }
@@ -837,6 +836,59 @@ export default function EmployeePage() {
     return (
       <main className="min-h-screen bg-slate-950 p-8 text-white">
         <GlassPanel>Loading employee portal...</GlassPanel>
+      </main>
+    );
+  }
+
+  if (memberships.length === 0) {
+    return (
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#1e293b_0%,_#0f172a_45%,_#020617_100%)] text-white">
+        <div className="flex min-h-screen items-center justify-center px-4 py-10">
+          <section className="w-full max-w-xl rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-2xl backdrop-blur-xl">
+            <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-amber-400/30 bg-amber-400/10 text-3xl font-bold text-amber-200">
+              KJD
+            </div>
+
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              New Employee Account
+            </div>
+
+            <h1 className="text-3xl font-bold tracking-tight text-white">
+              Welcome to KJD Solutions
+            </h1>
+
+            <p className="mx-auto mt-3 max-w-md text-slate-300">
+              You are not connected to a community yet. Join an existing community
+              or create a new one to continue.
+            </p>
+
+            {message && (
+              <div className="mt-5 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+                {message}
+              </div>
+            )}
+
+            <div className="mt-7 grid gap-4 sm:grid-cols-2">
+              <a
+                href="/find-community"
+                className="rounded-2xl bg-sky-500 px-4 py-4 font-bold text-white shadow-lg transition hover:bg-sky-600"
+              >
+                Join Existing Community
+              </a>
+
+              <a
+                href="/create-community"
+                className="rounded-2xl bg-amber-400 px-4 py-4 font-bold text-slate-950 shadow-lg transition hover:bg-amber-300"
+              >
+                Create New Community
+              </a>
+            </div>
+
+            <p className="mt-6 text-xs text-slate-500">
+              After joining or creating a community, return to the employee portal.
+            </p>
+          </section>
+        </div>
       </main>
     );
   }
