@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -33,50 +33,52 @@ export default function LoginPage() {
 
         if (error) throw error;
 
-        setMessage("Account created. You can now sign in.");
+        if (!data.session) {
+          setMessage(
+            "Account created. Please check your email and confirm your account before signing in."
+          );
+        } else {
+          setMessage("Account created and signed in.");
+          window.location.href = "/dashboard";
+        }
+
         setMode("login");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
 
-        // ✅ ONLY CHANGE MADE HERE
+        if (!data.session) {
+          setMessage("Login failed. Please confirm your email first.");
+          return;
+        }
+
         window.location.href = "/dashboard";
       }
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Something went wrong.");
+    } catch (err: any) {
+      let msg = err?.message || "Something went wrong.";
+
+      // 🔥 Cleaner error messages
+      if (msg.includes("Invalid login credentials")) {
+        msg = "Invalid email or password.";
+      }
+
+      if (msg.includes("Email not confirmed")) {
+        msg = "Please confirm your email before logging in.";
+      }
+
+      setMessage(msg);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background:
-          "radial-gradient(circle at top, #10233a 0%, #05070b 55%, #000000 100%)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <section
-        style={{
-          width: "100%",
-          maxWidth: 460,
-          background: "rgba(10, 15, 25, 0.94)",
-          border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 24,
-          padding: 32,
-          boxShadow: "0 25px 80px rgba(0,0,0,0.65)",
-        }}
-      >
+    <main style={pageStyle}>
+      <section style={cardStyle}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <Image
             src="/kjd-logo.png"
@@ -84,22 +86,12 @@ export default function LoginPage() {
             width={240}
             height={240}
             priority
-            style={{
-              width: "100%",
-              maxWidth: 240,
-              height: "auto",
-              margin: "0 auto",
-              display: "block",
-            }}
+            style={{ maxWidth: 240, width: "100%", height: "auto" }}
           />
 
-          <h1 style={{ color: "white", marginBottom: 6 }}>
+          <h1 style={{ color: "white" }}>
             {mode === "login" ? "Employee Login" : "Create Account"}
           </h1>
-
-          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>
-            KJD Solutions Maintenance Portal
-          </p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -149,35 +141,14 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {message && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 12,
-              borderRadius: 12,
-              background: "#111827",
-              color: "white",
-              border: "1px solid #374151",
-            }}
-          >
-            {message}
-          </div>
-        )}
+        {message && <div style={messageStyle}>{message}</div>}
 
         <button
           onClick={() => {
             setMessage("");
             setMode(mode === "login" ? "signup" : "login");
           }}
-          style={{
-            marginTop: 18,
-            width: "100%",
-            background: "transparent",
-            border: "none",
-            color: "#38bdf8",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
+          style={switchStyle}
         >
           {mode === "login"
             ? "Need an account? Create one"
@@ -187,6 +158,24 @@ export default function LoginPage() {
     </main>
   );
 }
+
+/* styles */
+const pageStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  background:
+    "radial-gradient(circle at top, #10233a 0%, #05070b 55%, #000000 100%)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const cardStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 460,
+  background: "rgba(10, 15, 25, 0.94)",
+  borderRadius: 24,
+  padding: 32,
+};
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -206,5 +195,22 @@ const buttonStyle: React.CSSProperties = {
   background: "#0284c7",
   color: "white",
   fontWeight: "bold",
+  cursor: "pointer",
+};
+
+const messageStyle: React.CSSProperties = {
+  marginTop: 16,
+  padding: 12,
+  borderRadius: 12,
+  background: "#111827",
+  color: "white",
+};
+
+const switchStyle: React.CSSProperties = {
+  marginTop: 18,
+  width: "100%",
+  background: "transparent",
+  border: "none",
+  color: "#38bdf8",
   cursor: "pointer",
 };

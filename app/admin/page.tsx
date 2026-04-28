@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import QRCode from "qrcode.react";
+import { QRCodeCanvas } from "qrcode.react";
 import { supabase } from "@/lib/supabase";
 
 const APP_URL = "https://kjd-solutions-m1m01dpiy-qajesserileys-projects.vercel.app";
@@ -48,7 +48,6 @@ export default function AdminPage() {
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
 
   const [selectedOrgId, setSelectedOrgId] = useState("");
-  const [newCommunityName, setNewCommunityName] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -138,9 +137,11 @@ export default function AdminPage() {
                   </div>
                 </button>
 
-                {/* ✅ QR CODE ADDED */}
                 <div style={{ marginTop: 10 }}>
-                  <QRCode value={`${APP_URL}/?org=${org.id}`} size={80} />
+                  <QRCodeCanvas
+                    value={`${APP_URL}/?org=${org.id}`}
+                    size={80}
+                  />
                 </div>
               </div>
 
@@ -155,7 +156,6 @@ export default function AdminPage() {
         </aside>
 
         <section>
-          {/* EMPLOYEES */}
           <div style={panelStyle}>
             <h2>Employees</h2>
             {selectedMembers.map((m) => (
@@ -163,7 +163,6 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {/* JOIN REQUESTS */}
           <div style={{ ...panelStyle, marginTop: 20 }}>
             <h2>Join Requests</h2>
             {selectedJoinRequests.map((r) => (
@@ -171,7 +170,6 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {/* 🚀 NEW SECTION */}
           <div style={{ ...panelStyle, marginTop: 20 }}>
             <h2>Maintenance Requests</h2>
 
@@ -207,14 +205,44 @@ export default function AdminPage() {
   );
 }
 
-/* styles unchanged */
-const pageStyle = { minHeight: "100vh", background: "#070b14", color: "white", padding: 30 };
-const logoHeaderStyle = { textAlign: "center", marginBottom: 26 };
-const gridStyle = { display: "grid", gridTemplateColumns: "320px 1fr", gap: 20 };
-const panelStyle = { background: "#0f172a", padding: 20, borderRadius: 16 };
-const rowStyle = { display: "flex", justifyContent: "space-between", padding: 10 };
-const messageStyle = { background: "#111827", padding: 10, borderRadius: 10 };
-const linkButtonStyle = {
+/* ✅ FULLY FIXED TYPES */
+const pageStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  background: "#070b14",
+  color: "white",
+  padding: 30,
+};
+
+const logoHeaderStyle: React.CSSProperties = {
+  textAlign: "center",
+  marginBottom: 26,
+};
+
+const gridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "320px 1fr",
+  gap: 20,
+};
+
+const panelStyle: React.CSSProperties = {
+  background: "#0f172a",
+  padding: 20,
+  borderRadius: 16,
+};
+
+const rowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: 10,
+};
+
+const messageStyle: React.CSSProperties = {
+  background: "#111827",
+  padding: 10,
+  borderRadius: 10,
+};
+
+const linkButtonStyle: React.CSSProperties = {
   background: "#0284c7",
   border: "none",
   color: "white",

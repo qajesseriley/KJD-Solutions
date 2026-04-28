@@ -26,7 +26,9 @@ export default function HomePage() {
 
 function MaintenanceRequestForm() {
   const searchParams = useSearchParams()
-  const organizationId = searchParams.get('org')
+
+  const organizationId =
+    searchParams.get('organization_id') || searchParams.get('org') || ''
 
   const [form, setForm] = useState<FormState>({
     name: '',
