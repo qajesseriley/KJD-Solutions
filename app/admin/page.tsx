@@ -5,7 +5,7 @@ import Image from "next/image";
 import { QRCodeCanvas } from "qrcode.react";
 import { supabase } from "@/lib/supabase";
 
-const APP_URL = "https://kjd-solutions-m1m01dpiy-qajesserileys-projects.vercel.app";
+const APP_URL = "https://kjd-solutions.vercel.app";
 
 type Organization = {
   id: string;
@@ -66,9 +66,7 @@ export default function AdminPage() {
       .from("organization_members")
       .select("*");
 
-    const joinResult = await supabase
-      .from("join_requests")
-      .select("*");
+    const joinResult = await supabase.from("join_requests").select("*");
 
     const requestResult = await supabase
       .from("maintenance_requests")
@@ -138,10 +136,7 @@ export default function AdminPage() {
                 </button>
 
                 <div style={{ marginTop: 10 }}>
-                  <QRCodeCanvas
-                    value={`${APP_URL}/?org=${org.id}`}
-                    size={80}
-                  />
+                  <QRCodeCanvas value={`${APP_URL}/?org=${org.id}`} size={80} />
                 </div>
               </div>
 
@@ -205,7 +200,6 @@ export default function AdminPage() {
   );
 }
 
-/* ✅ FULLY FIXED TYPES */
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
   background: "#070b14",
