@@ -47,10 +47,41 @@ export default function AdminPage() {
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    loadData();
+    checkAdminAccess();
   }, []);
+
+  async function checkAdminAccess() {
+    setLoading(true);
+    setMessage("");
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData.user) {
+      setMessage("Not authenticated.");
+      setAuthorized(false);
+      setLoading(false);
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userData.user.id)
+      .single();
+
+    if (profileError || profile?.role !== "kjd_admin") {
+      setMessage("Access denied.");
+      setAuthorized(false);
+      setLoading(false);
+      return;
+    }
+
+    setAuthorized(true);
+    await loadData();
+  }
 
   async function loadData() {
     setLoading(true);
@@ -178,6 +209,25 @@ export default function AdminPage() {
     setMessage("Resident request link copied.");
   }
 
+  if (loading && !authorized) {
+    return (
+      <main style={accessPageStyle}>
+        Loading admin panel...
+      </main>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <main style={accessPageStyle}>
+        <section style={accessCardStyle}>
+          <h1 style={{ marginTop: 0 }}>KJD Admin</h1>
+          <p>{message || "Access denied."}</p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main style={pageStyle}>
       <aside style={sidebarStyle}>
@@ -232,7 +282,7 @@ export default function AdminPage() {
               </button>
             )}
 
-            <button onClick={loadData} style={secondaryButtonStyle}>
+            <button onClick={checkAdminAccess} style={secondaryButtonStyle}>
               Refresh
             </button>
           </div>
@@ -383,6 +433,27 @@ function StatCard({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
+const accessPageStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  background: "#070b14",
+  color: "white",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontFamily: "Arial, sans-serif",
+  padding: 24,
+};
+
+const accessCardStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 420,
+  background: "#0f172a",
+  border: "1px solid #1f2937",
+  borderRadius: 18,
+  padding: 24,
+  textAlign: "center",
+};
 
 const pageStyle: React.CSSProperties = {
   display: "grid",
